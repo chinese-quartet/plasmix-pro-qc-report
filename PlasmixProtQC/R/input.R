@@ -14,8 +14,8 @@ input_data <- function(exp_path, meta_path) {
   # fread 能够自动识别 .txt, .csv, .tsv 的分隔符
   # expr <- fread(exp_path)
   # meta <- fread(meta_path)
-  expr <- read.table(exp_path, sep = "\t", header = TRUE, check.names = FALSE)
-  meta <- read.table(meta_path, sep = "\t", header = TRUE, check.names = FALSE)
+  expr <- read.table(exp_path, sep = ",", header = TRUE, check.names = FALSE)
+  meta <- read.table(meta_path, sep = ",", header = TRUE, check.names = FALSE)
 
   expr <- as.data.frame(expr)
   meta <- meta %>%
