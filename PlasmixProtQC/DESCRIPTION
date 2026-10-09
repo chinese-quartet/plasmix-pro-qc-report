@@ -14,8 +14,13 @@ Imports:
     psych,
     reshape2,
     stats,
-    utils,
-Description: The package protqc output Quality Control(QC) results of proteomics data for Quartet Project. The QC pipeline starts from the expression profiles at peptide/protein levels, and enables to calculate 6 metrics. A Total score is the geometric mean of the linearly normalized values of these metrics..
+    utils
+Suggests:
+    xml2
+Description: Evaluates Plasmix plasma proteomics data using feature count,
+    recall of nominal characteristics, signal-to-noise ratio and Pearson
+    correlation with reference ratios. Generates a Word quality report that
+    requires all four metrics to exceed the specified 2026 quality thresholds.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)

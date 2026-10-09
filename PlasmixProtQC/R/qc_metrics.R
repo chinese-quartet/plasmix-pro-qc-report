@@ -140,7 +140,8 @@ qc_snr <- function(expr_dt, meta_dt, output_dir = NULL, plot = TRUE) {
   }
 
   snr <- mean(inter_dists) / mean(intra_dists)
-  snr_db <- round(10 * log10(snr), 2)
+  # 保留完整精度用于质量判定；只在图表展示时四舍五入。
+  snr_db <- 10 * log10(snr)
 
   # Plot
   p <- NULL
@@ -151,7 +152,7 @@ qc_snr <- function(expr_dt, meta_dt, output_dir = NULL, plot = TRUE) {
       scale_color_manual(values = cols) +
       theme_few() +
       labs(
-        title = paste0("SNR = ", snr_db),
+        title = paste0("SNR = ", round(snr_db, 2), " dB"),
         x = sprintf("PC1 (%.1f%%)", prop[1] * 100),
         y = sprintf("PC2 (%.1f%%)", prop[2] * 100)
       )
@@ -322,7 +323,7 @@ qc_cor <- function(expr_dt, meta_dt, output_dir = NULL, plot = FALSE, show_sampl
 
   # 计算相关性 (Test Ratio vs Reference Ratio)
   cor_val <- cor(merged$logFC.Test, merged$assigned_value, use = "complete.obs")
-  cor_val <- round(cor_val, 3)
+  # 保留完整精度用于严格阈值判定。
 
   # Plot
   p <- NULL
@@ -357,7 +358,7 @@ qc_cor <- function(expr_dt, meta_dt, output_dir = NULL, plot = FALSE, show_sampl
       scale_x_continuous(breaks = 0:5) +
       scale_y_continuous(breaks = 0:5) +
       labs(
-        title = paste0("PCC = ", cor_val),
+        title = paste0("PCC = ", round(cor_val, 3)),
         x = "Reference Value",
         y = "Test Value"
       )
