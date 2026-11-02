@@ -166,205 +166,60 @@ qc_snr <- function(expr_dt, meta_dt, output_dir = NULL, plot = TRUE) {
   return(list(SNR = snr_db, snr_plot = p))
 }
 
-#' Calculating RC
+#' Calculating ratio PCC against a fixed reference panel
+#' @param expr_dt Log2 expression table with feature identifiers in the first column.
+#' @param meta_dt Sample metadata containing library, sample and platform.
+#' @param output_dir Optional output directory, retained for API compatibility.
+#' @param plot Whether to draw the ratio scatter plot.
+#' @param show_sample_pairs Retained for API compatibility.
+#' @param sample_pair Ratio to evaluate; M/F is used by the standard report.
 #' @importFrom utils data
-#' @importFrom ggplot2 ggplot aes geom_point scale_color_manual theme_classic labs coord_fixed
+#' @importFrom ggplot2 ggplot aes geom_point geom_abline labs
 #' @export
-qc_cor <- function(expr_dt, meta_dt, output_dir = NULL, plot = FALSE, show_sample_pairs = TRUE) {
-  # 1. 准备参考数据
+qc_cor <- function(expr_dt, meta_dt, output_dir = NULL, plot = FALSE,
+                   show_sample_pairs = TRUE, sample_pair = "M/F") {
+  expr_dt <- as.data.frame(expr_dt); meta_dt <- as.data.frame(meta_dt)
   plat <- unique(meta_dt$platform)
-
-  # 尝试加载数据
-  tryCatch(
-    {
-      utils::data("reference_dataset", package = "PlasmixProtQC", envir = environment())
-    },
-    error = function(e) {
-      utils::data("reference_dataset", package = "protqc", envir = environment())
-    }
-  )
-
-  ref_dt <- reference_dataset[reference_dataset$platform == plat, ]
-  if (nrow(ref_dt) == 0) stop("No reference data.")
-
-  # 2. 准备表达矩阵 (Feature x Sample)
-  mat <- as.matrix(expr_dt[, -1])
+  if (length(plat) != 1L) stop("One platform is required per report.")
+  parts <- strsplit(sample_pair, "/", fixed = TRUE)[[1]]
+  if (length(parts) != 2L || parts[1] == parts[2]) stop("Invalid sample_pair.")
+  utils::data("reference_dataset", package = "PlasmixProtQC", envir = environment())
+  ref <- reference_dataset[reference_dataset$platform == plat & reference_dataset$sample_pair == sample_pair, , drop = FALSE]
+  if (!all(c("UseForPCC", "ReferenceVersion") %in% names(ref))) stop("The bundled reference needs updating.")
+  version <- unique(as.character(ref$ReferenceVersion))
+  ref <- ref[ref$UseForPCC %in% TRUE, , drop = FALSE]
+  if (anyDuplicated(ref$feature)) stop("Duplicate fixed reference features.")
+  md <- meta_dt[match(names(expr_dt)[-1], meta_dt$library), , drop = FALSE]
+  if (anyNA(md$library) || anyDuplicated(md$library) || anyDuplicated(expr_dt[[1]])) stop("Input feature/library alignment is invalid.")
+  mat <- as.matrix(expr_dt[, -1, drop = FALSE])
   rownames(mat) <- expr_dt[[1]]
-  mat <- mat[, meta_dt$library]
-
-  # [修正 1] 删除这里的 mat[is.na(mat)] <- 0，保留 NA 状态！
-  # mat[is.na(mat)] <- 0
-
-
-  # --- 修改 2: RC 计算逻辑 (还原Log2 -> 算比值) ---
-
-  # 2.1 将 Log2 数据还原为线性信号值 (2^x)
-  # 无论什么平台，前提假设是用户输入了 Log2 转换后的数据
-  mat_linear <- 2^mat
-
-  # 3. 确定 Reference Sample (P)
-  samps <- unique(meta_dt$sample)
-  ref_samp <- "P"
-  if (!"P" %in% samps) {
-    ref_samp <- samps[1]
-    warning("No 'P' sample. Using ", ref_samp)
+  groups <- lapply(parts, function(x) which(md$sample == x))
+  common <- intersect(rownames(mat), ref$feature)
+  merged <- data.frame(Feature = character(), Sample.Pair = character(), logFC.Test = numeric(), assigned_value = numeric())
+  status <- "sample_group_missing"
+  if (all(lengths(groups) > 0L)) {
+    linear <- 2^mat[common, , drop = FALSE]
+    ratio <- rowMeans(linear[, groups[[1]], drop = FALSE], na.rm = TRUE) /
+      rowMeans(linear[, groups[[2]], drop = FALSE], na.rm = TRUE)
+    assigned <- ref$assigned_value[match(common, ref$feature)]
+    keep <- is.finite(ratio) & ratio > 0 & is.finite(assigned) & assigned > 0
+    merged <- data.frame(Feature = common[keep], Sample.Pair = rep(sample_pair, sum(keep)),
+                         logFC.Test = ratio[keep], assigned_value = assigned[keep])
+    status <- if (nrow(merged) < 10L) "insufficient_features" else "computed"
   }
-  test_samps <- setdiff(samps, ref_samp)
-
-  # 4. 循环计算 Ratio
-  res_all <- data.frame()
-
-  for (ts in test_samps) {
-    # 提取列索引
-    cols_test <- which(meta_dt$sample == ts)
-    cols_ref <- which(meta_dt$sample == ref_samp)
-
-    # 提取线性数据子集
-    dat_ref <- mat_linear[, cols_ref, drop = FALSE]
-    dat_test <- mat_linear[, cols_test, drop = FALSE]
-
-    # [修正 2] 过滤逻辑升级：Reference 组必须有有效值
-    # 计算每行非 NA 的数量
-    count_ref <- rowSums(!is.na(dat_ref))
-    count_test <- rowSums(!is.na(dat_test))
-
-    # 规则：Ref 组至少有 1 个有效值，Test 组至少有 1 个有效值
-    # 如果 Reference 是全 NA，Ratio = Test / NaN = NaN，这种必须丢弃
-    keep_rows <- (count_ref > 0) & (count_test > 0)
-
-    # dat_ref <- dat_ref[keep_rows, , drop=FALSE]
-    # dat_test <- dat_test[keep_rows, , drop=FALSE]
-    #
-    # # 过滤掉 全0/全NA 的行
-    # keep_rows <- (rowSums(dat_ref > 0, na.rm=TRUE) > 0) & (rowSums(dat_test > 0, na.rm=TRUE) > 0)
-    #
-    # dat_ref <- dat_ref[keep_rows, , drop=FALSE]
-    # dat_test <- dat_test[keep_rows, , drop=FALSE]
-
-    current_features <- rownames(dat_ref)
-
-    # 与参考集 Feature 取交集
-    pair_name <- paste(ts, ref_samp, sep = "/")
-    feats_ref <- ref_dt$feature[ref_dt$sample_pair == pair_name]
-    common_feats <- intersect(current_features, feats_ref)
-
-    if (length(common_feats) < 3) next
-
-    # 筛选特征
-    dat_ref <- dat_ref[common_feats, , drop = FALSE]
-    dat_test <- dat_test[common_feats, , drop = FALSE]
-
-    # *** 核心计算: 原始信号值相比 (Mean Test / Mean Ref) ***
-    # 计算行平均值 (Arithmetic Mean of Linear Signal)
-    mean_ref <- rowMeans(dat_ref, na.rm = TRUE)
-    mean_test <- rowMeans(dat_test, na.rm = TRUE)
-
-    # 直接相除得到 Ratio
-    ratio_val <- mean_test / mean_ref
-
-    # 构建临时结果
-    df_tmp <- data.frame(
-      Feature = common_feats,
-      Sample.Pair = pair_name,
-      # 依然沿用 logFC.Test 这个列名以保持兼容性，但实际存储的是 Linear Ratio
-      logFC.Test = ratio_val
-    )
-
-    res_all <- rbind(res_all, df_tmp)
+  n <- nrow(merged); value <- NA_real_
+  if (status == "computed") {
+    if (sd(merged$logFC.Test) > 0 && sd(merged$assigned_value) > 0) value <- cor(merged$logFC.Test, merged$assigned_value)
+    else status <- "zero_variance"
   }
-
-  if (nrow(res_all) == 0) {
-    return(list(COR = NA, cor_plot = NULL))
-  }
-
-  # 5. 合并参考值
-  res_all$key <- paste(res_all$Feature, res_all$Sample.Pair)
-  ref_dt$key <- paste(ref_dt$feature, ref_dt$sample_pair)
-
-  merged <- merge(res_all, ref_dt, by = "key")
-
-  # # --- 升级版离群点检测 (Log-Space Outlier Detection) ---
-  # # 1. 转换到 Log2 空间进行检测 (这样分布是对称的，IQR 更准确)
-  # #    加极小值防止 log(0)
-  # log2_vals <- log2(merged$logFC.Test + 1e-6)
-  #
-  # # 2. 计算 Log 空间的 IQR
-  # Q1 <- quantile(log2_vals, 0.25, na.rm = TRUE)
-  # Q3 <- quantile(log2_vals, 0.75, na.rm = TRUE)
-  # IQR_val <- Q3 - Q1
-  #
-  # # 3. 设定 Log 空间的阈值
-  # # 这里系数 1.5 是标准，如果想更严格可以设为 1.2
-  # upper_log <- Q3 + 1.5 * IQR_val
-  # lower_log <- Q1 - 1.5 * IQR_val
-  #
-  # # 4. 找出离群点
-  # is_outlier <- (log2_vals > upper_log) | (log2_vals < lower_log)
-  #
-  # # *额外硬阈值*：Ratio > 100 或 < 0.01 无论如何都算离群 (生物学上极罕见)
-  # is_extreme <- (merged$logFC.Test > 100) | (merged$logFC.Test < 0.01)
-  # final_mask <- is_outlier | is_extreme
-  #
-  # n_outliers <- sum(final_mask, na.rm = TRUE)
-  #
-  # if (n_outliers > 0) {
-  #   message(sprintf("Detected %d outliers in RC calculation (Log-IQR method). Removing them.", n_outliers))
-  #
-  #   # 打印前几个被剔除的极端值，方便用户 debug
-  #   removed_examples <- head(merged[final_mask, ], 3)
-  #   message("Top removed outliers:")
-  #   print(removed_examples[, c("Feature", "Sample.Pair", "logFC.Test")])
-  #
-  #   merged_clean <- merged[!final_mask, ]
-  # } else {
-  #   merged_clean <- merged
-  # }
-  # ----------------------------------------------------
-
-  # 计算相关性 (Test Ratio vs Reference Ratio)
-  cor_val <- cor(merged$logFC.Test, merged$assigned_value, use = "complete.obs")
-  # 保留完整精度用于严格阈值判定。
-
-  # Plot
   p <- NULL
-  if (plot) {
-    # [修复] 安全的颜色映射逻辑，防止下标越界
-    unique_pairs <- unique(merged$Sample.Pair)
-
-    # 1. 提取所有涉及的分子样本 (Test Samples)
-    numerators <- unique(sapply(strsplit(as.character(unique_pairs), "/"), `[`, 1))
-
-    # 2. 获取这些样本的标准颜色
-    sample_cols_base <- get_sample_colors(numerators) # named vector
-
-    # 3. 构建 Pair -> Color 的映射向量
-    pair_colors_vec <- c()
-    for (pair in unique_pairs) {
-      num <- strsplit(as.character(pair), "/")[[1]][1]
-      # 安全查找：如果 num 存在于 sample_cols_base 的名字中
-      if (num %in% names(sample_cols_base)) {
-        pair_colors_vec[pair] <- sample_cols_base[num]
-      } else {
-        pair_colors_vec[pair] <- "gray"
-      }
-    }
-
-    p <- ggplot(merged, aes(x = assigned_value, y = logFC.Test)) +
-      geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray50") +
-      geom_point(aes(color = Sample.Pair), alpha = 0.6, size = 2) +
-      scale_color_manual(values = pair_colors_vec) +
-      theme_few() +
-      coord_fixed(xlim = c(0, 5), ylim = c(0, 5)) +
-      scale_x_continuous(breaks = 0:5) +
-      scale_y_continuous(breaks = 0:5) +
-      labs(
-        title = paste0("PCC = ", round(cor_val, 3)),
-        x = "Reference Value",
-        y = "Test Value"
-      )
-  }
-
-  return(list(COR = cor_val, cor_plot = p, logfc = merged))
+  if (plot && n > 0L) p <- ggplot(merged, aes(x = assigned_value, y = logFC.Test)) +
+    geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray50") +
+    geom_point(color = "#3171b8", alpha = .7, size = 2) + ggthemes::theme_few() +
+    labs(title = sprintf("%s PCC = %.3f (n=%d)", sample_pair, value, n),
+         x = paste(sample_pair, "reference ratio"), y = paste(sample_pair, "test ratio"))
+  list(COR = value, N = n, Pair = sample_pair, ReferenceVersion = paste(version, collapse = ";"),
+       Status = status, cor_plot = p, logfc = merged)
 }
 
 #' Recall
@@ -390,7 +245,9 @@ qc_recall <- function(expr_dt, meta_dt) {
     libs <- meta_dt$library[meta_dt$sample == s]
 
     for (l in libs) {
-      det <- expr_dt[[1]][!is.na(expr_dt[[l]]) & expr_dt[[l]] > 0]
+      values <- expr_dt[[l]]
+      detected <- if (plat == "Olink") is.finite(values) else !is.na(values) & values > 0
+      det <- expr_dt[[1]][detected]
       recall <- length(intersect(det, feats_ref)) / length(feats_ref)
       vals <- c(vals, recall)
     }

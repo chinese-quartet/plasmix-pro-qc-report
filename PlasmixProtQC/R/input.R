@@ -62,6 +62,8 @@ input_data <- function(exp_path, meta_path) {
     colnames(expr)[1] <- "Feature"
   }
 
+  if (anyDuplicated(expr$Feature)) stop("Duplicated feature IDs in expression data.")
+
   # 3. 检查 Library 列匹配
   # 排除第一列后，剩余列名应该是 Library ID
   expr_libs <- colnames(expr)[2:ncol(expr)]
@@ -81,6 +83,7 @@ input_data <- function(exp_path, meta_path) {
 
   # 重组表达矩阵：第一列 Feature + 匹配的 Library 列
   expr_final <- expr[, c("Feature", valid_libs)]
+  meta_final <- meta_final[match(valid_libs, meta_final$library), , drop = FALSE]
 
   # 返回统一的 List
   data_list <- list(

@@ -1,6 +1,6 @@
 Package: PlasmixProtQC
 Title: The package protqc output Quality Control(QC) results of proteomics data for Quartet Project
-Version: 1.0.0
+Version: 1.1.0
 Authors@R: 
     person("Yanming", "Xie", email = "yanming.xie@fudan.edu.cn", role = c("aut", "cre"))
 Depends: R (>= 3.5)
@@ -19,7 +19,7 @@ Suggests:
     xml2
 Description: Evaluates Plasmix plasma proteomics data using feature count,
     recall of nominal characteristics, signal-to-noise ratio and Pearson
-    correlation with reference ratios. Generates a Word quality report that
+    correlation with fixed M/F reference ratios. Generates a Word quality report that
     requires all four metrics to exceed the specified 2026 quality thresholds.
 License: MIT + file LICENSE
 Encoding: UTF-8
