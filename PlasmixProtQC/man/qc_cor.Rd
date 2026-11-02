@@ -2,16 +2,30 @@
 % Please edit documentation in R/qc_metrics.R
 \name{qc_cor}
 \alias{qc_cor}
-\title{Calculating RC}
+\title{Calculating ratio PCC against a fixed reference panel}
 \usage{
 qc_cor(
   expr_dt,
   meta_dt,
   output_dir = NULL,
   plot = FALSE,
-  show_sample_pairs = TRUE
+  show_sample_pairs = TRUE,
+  sample_pair = "M/F"
 )
 }
+\arguments{
+\item{expr_dt}{Log2 expression table with feature identifiers in the first column.}
+
+\item{meta_dt}{Sample metadata containing library, sample and platform.}
+
+\item{output_dir}{Optional output directory, retained for API compatibility.}
+
+\item{plot}{Whether to draw the ratio scatter plot.}
+
+\item{show_sample_pairs}{Retained for API compatibility.}
+
+\item{sample_pair}{Ratio to evaluate; M/F is used by the standard report.}
+}
 \description{
-Calculating RC
+Calculating ratio PCC against a fixed reference panel
 }

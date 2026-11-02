@@ -11,20 +11,46 @@
 * **核心指标**：
 * **Recall (标称特性召回率)**：评估检测的覆盖深度。
 * **SNR (信噪比)**：评估区分不同生物样本组的能力。
-* **RC (相对相关性)**：基于比值（Ratio-based）评估定量准确性，与内置黄金标准进行比对。
+* **PCC (Pearson 相关系数，内部指标名为 RC)**：基于比值（Ratio-based）评估相对定量一致性，与内置参考数据集进行比对。
 
+## 2026 年质量判定要求
+
+Word 报告的“是否通过”列要求以下四项**同时达标**：
+
+| 指标 | 通过条件 |
+| --- | --- |
+| 标称特性召回率 Recall | **>0.90** |
+| 信噪比 SNR | **>5 dB** |
+| 相对定量一致性 PCC（内部指标名 RC） | **>0.80** |
+| 蛋白鉴定数 | **>1000** |
+
+所有条件均为严格大于；等于阈值不通过。任一指标缺失、非有限（`NA`、`NaN`、`Inf`）或不达标时，整体结果为 `No`，只有四项全部达标时才为 `Yes`。不达标的数值显示红色及向下箭头，缺失或非有限值显示红色 `-`。
+
+阈值比较使用未四舍五入的计算值；表格及图标题中的小数位数仅用于展示。SNR 使用 `10 * log10(组间平均距离 / 组内平均距离)` 的 dB 值。蛋白鉴定数沿用输入表达矩阵第一列唯一 Feature 的计数口径。
+
+
+## 参考数据集与维护
+
+当前参考集为 **FDU_v2.0_20261101**，适用于FDU材料的DIA、Olink HT和SomaScan 11K。参考集版本与R包软件版本分别管理。
+
+继续使用两份主要内置RDA：`reference_dataset_quali.rda`用于Recall；`reference_dataset.rda`保留完整S/P和直接定值的MF，以及`UseForPCC`和`ReferenceVersion`。主报告依据参考集的UseForPCC标记纳入条目，DIA25、Olink134、SomaScan687个蛋白，不随提交批次重新筛选。PCC后括号n为实际有效交集。
+
+两张图采用相同字体与主题。SNR散点缩小并增加细白边，保持样本组颜色；PCC散点单色显示PCC及实际n，横纵轴使用同一范围和等比例坐标。
+
+需要更新参考数据时，替换仓库根目录两张CSV，再运行`Rscript data_genaration.R`重建这两份RDA；不要编辑二进制文件，也不要从S/P共识值相除生成MF。数据打包脚本与标准集构建代码分开，报告运行不会重新构建参考集。
+
+Olink负NPX有效，Recall使用有限值报告覆盖；DIA/SomaScan沿用提交值>0。输入需为log2尺度。无提交LOD时不能把报告覆盖解释为高于LOD。秩转换数据不能按常规信号解释其比例PCC。
 
 ## 安装
 
-您可以通过 devtools 安装此包：
+软件包位于仓库的PlasmixProtQC子目录：
 
 ```r
-# 如果未安装 devtools
-install.packages("devtools")
-
-# 加载本地包 (开发模式)
-devtools::load_all()
+install.packages("remotes")  # 已安装时跳过
+remotes::install_github("chinese-quartet/plasmix-pro-qc-report", subdir = "PlasmixProtQC")
 ```
+
+开发本地副本时，在仓库根目录运行`devtools::load_all("PlasmixProtQC")`。
 
 ## 数据准备
 
@@ -41,7 +67,7 @@ devtools::load_all()
 
 * 必须包含以下三列（列名不区分大小写）：
 * `library`: 对应表达矩阵中的列名。
-* `sample`: 样本类型，必须包含 **P** (参考样本)，以及 **M, F, X, Y** 等测试样本。
+* `sample`: 样本类型，正式报告必须包含 **M和F**。P、X、Y可继续用于其他指标；P不作为主PCC分母。
 * `platform`: 检测平台名称，必须准确填写为 **`SomaScan`**, **`Olink`** 或 **`DIA`** (这将决定参考数据集的选择和计算逻辑)。
 
 
@@ -85,7 +111,7 @@ qc_res <- qc_conclusion(
 # 查看分析结果概览
 message("\n=== 分析完成 ===")
 print("结论表:")
-print(qc_res$conclusion)
+print(qc_res$qc_metrics_table)
 
 # 在 RStudio 中预览关键图表 (可选)
 # print(qc_res$snr_plot)  # 查看 SNR PCA 图
@@ -124,7 +150,7 @@ generate_protein_report(
 
 
 ## 常见问题
-* **关于 P 样本**：计算 Relative Correlation (RC) 时，必须依赖 **样本 P** 作为分母。请确保 metadata 中包含样本名为 `P` 的数据。
+* **关于有效交集**：PCC使用参考数据与提交数据的有效交集。缺少M或F、有效交集少于10个或零方差时，PCC缺失，整体判定不通过。
 
 ---
 
