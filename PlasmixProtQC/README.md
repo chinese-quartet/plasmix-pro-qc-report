@@ -35,6 +35,8 @@ Word 报告的“是否通过”列要求以下四项**同时达标**：
 
 继续使用两份主要内置RDA：`reference_dataset_quali.rda`用于Recall；`reference_dataset.rda`保留完整S/P和直接定值的MF，以及`UseForPCC`和`ReferenceVersion`。主报告只读取M/F且UseForPCC为TRUE的固定名单，DIA25、Olink134、SomaScan687个蛋白，不随提交批次重新筛选。PCC后括号n为实际有效交集。
 
+两张图采用相同字体与主题。SNR散点缩小并增加细白边，保持样本组颜色；PCC散点单色显示PCC及实际n，横纵轴使用同一范围和等比例坐标。报告正文沿用原模板。
+
 需要更新参考数据时，替换仓库根目录两张CSV，再运行`Rscript data_genaration.R`重建这两份RDA；不要编辑二进制文件，也不要从S/P共识值相除生成MF。数据打包脚本与标准集构建代码分开，报告运行不会重新构建参考集。
 
 Olink负NPX有效，Recall使用有限值报告覆盖；DIA/SomaScan沿用提交值>0。输入需为log2尺度。无提交LOD时不能把报告覆盖解释为高于LOD。秩转换数据不能按常规信号解释其比例PCC。
@@ -155,15 +157,6 @@ generate_protein_report(
 **维护者**: [Yanming Xie/Fudan University]
 **许可证**: MIT
 
-## 验证与交付范围
-
-安装本地包后可运行以下回归测试：
-
-```sh
-Rscript PlasmixProtQC/tests/quality-standards.R
-Rscript PlasmixProtQC/tests/fixed-mf-reference.R
-```
-
-测试覆盖四项严格阈值、缺失/非有限指标、显示精度、固定M/F名单、实际n及样本列对齐。R CMD check尚有中文源码、部分帮助文档缺失和NSE变量的静态检查提示。
+## 交付范围
 
 软件包只读取内置RDA，不依赖维护者的Excel或results目录。仓库保留原有的两张发布CSV及CSV到RDA打包脚本，供维护者更新内置数据；不需要保存Excel拆表过程，不包含私有参考集构建代码、原始实验数据或本地构建记录。

@@ -13,8 +13,12 @@ for (platform_name in names(expected)) {
   expr <- data.frame(Feature = selected$feature, F1 = 10,
                      M1 = 10 + log2(selected$assigned_value), P1 = 20)
   meta <- data.frame(library = c("F1", "M1", "P1"), sample = c("F", "M", "P"), platform = platform_name)
-  result <- qc_cor(expr, meta)
+  result <- qc_cor(expr, meta, plot = TRUE)
   stopifnot(result$N == nrow(selected), abs(result$COR - 1) < 1e-12, result$Pair == "M/F")
+  stopifnot(result$cor_plot$labels$title == sprintf("PCC = 1.000 (n=%d)", nrow(selected)),
+    result$cor_plot$labels$x == "Reference ratio", result$cor_plot$labels$y == "Test ratio")
+  panel <- ggplot2::ggplot_build(result$cor_plot)$layout$panel_params[[1]]
+  stopifnot(identical(panel$x.range, panel$y.range), result$cor_plot$coordinates$ratio == 1)
   # Simultaneously reorder columns and leave metadata order unchanged.
   permuted <- qc_cor(expr[, c("Feature", "P1", "F1", "M1")], meta)
   stopifnot(identical(result$N, permuted$N), abs(result$COR - permuted$COR) < 1e-12)
