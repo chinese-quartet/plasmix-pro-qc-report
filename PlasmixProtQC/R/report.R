@@ -167,8 +167,8 @@ generate_protein_report <- function(qc_result,
 
   txt_refs <- c(
     "1. Zheng Y, et al. Multi-omics data integration using ratio-based quantitative profiling with Quartet reference materials. Nature Biotechnology, 2024.",
-    "2. Liu Y, et al. Harmonizing plasma proteomics data with the sample-to-reference ratio approach. BioRxiv (2026)",
-    "3. 上海临床队列组学检测工作指引（征求意见稿）, 2025/11/26"
+    "2. Liu Y, et al. Plasma titration provides a physical ruler for cross-platform proteomics. BioRxiv (2026)",
+    "3. 上海临床队列组学检测工作指引（征求意见稿）, 2026年10月"
   )
 
   txt_disclaimer <- "本数据质量报告仅针对所评估的特定数据集提供分析结果，仅供信息参考之用。尽管已尽最大努力确保分析结果的准确性和可靠性，但本报告按“现状（AS IS）”提供，不附带任何形式的明示或暗示担保。报告作者及发布方不对基于本报告内容所采取的任何行动承担责任。本报告中的结论不应被视为对任何产品或流程质量的最终判定，也不应用于关键应用场景、商业决策或法规合规用途，除非经过专业核查和独立验证。对于分析结果的正确性、准确性、可靠性或适用性，不作任何明示或暗示的保证。"
