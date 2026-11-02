@@ -1,6 +1,6 @@
 Package: PlasmixProtQC
 Title: The package protqc output Quality Control(QC) results of proteomics data for Quartet Project
-Version: 1.1.0
+Version: 1.1.1
 Authors@R: 
     person("Yanming", "Xie", email = "yanming.xie@fudan.edu.cn", role = c("aut", "cre"))
 Depends: R (>= 3.5)

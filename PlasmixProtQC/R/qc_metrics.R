@@ -147,10 +147,10 @@ qc_snr <- function(expr_dt, meta_dt, output_dir = NULL, plot = TRUE) {
   p <- NULL
   if (plot) {
     cols <- get_sample_colors(unique(group))
-    p <- ggplot(pcs, aes(x = PC1, y = PC2, color = sample)) +
-      geom_point(size = 6) +
-      scale_color_manual(values = cols) +
-      theme_few() +
+    p <- ggplot(pcs, aes(x = PC1, y = PC2, fill = sample)) +
+      geom_point(shape = 21, size = 4.5, stroke = .55, color = "white") +
+      ggplot2::scale_fill_manual(values = cols) +
+      theme_few(base_size = 12, base_family = "Arial") +
       labs(
         title = paste0("SNR = ", round(snr_db, 2), " dB"),
         x = sprintf("PC1 (%.1f%%)", prop[1] * 100),
@@ -213,11 +213,16 @@ qc_cor <- function(expr_dt, meta_dt, output_dir = NULL, plot = FALSE,
     else status <- "zero_variance"
   }
   p <- NULL
-  if (plot && n > 0L) p <- ggplot(merged, aes(x = assigned_value, y = logFC.Test)) +
-    geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray50") +
-    geom_point(color = "#3171b8", alpha = .7, size = 2) + ggthemes::theme_few() +
-    labs(title = sprintf("%s PCC = %.3f (n=%d)", sample_pair, value, n),
-         x = paste(sample_pair, "reference ratio"), y = paste(sample_pair, "test ratio"))
+  if (plot && n > 0L) {
+    limits <- range(c(merged$assigned_value, merged$logFC.Test))
+    p <- ggplot(merged, aes(x = assigned_value, y = logFC.Test)) +
+      geom_abline(intercept = 0, slope = 1, linetype = "dashed", color = "gray50") +
+      geom_point(shape = 21, fill = "#3171b8", color = "white", size = 2.6, stroke = .35, alpha = .85) +
+      ggthemes::theme_few(base_size = 12, base_family = "Arial") +
+      ggplot2::coord_fixed(ratio = 1, xlim = limits, ylim = limits) +
+      labs(title = sprintf("PCC = %.3f (n=%d)", value, n),
+           x = "Reference ratio", y = "Test ratio")
+  }
   list(COR = value, N = n, Pair = sample_pair, ReferenceVersion = paste(version, collapse = ";"),
        Status = status, cor_plot = p, logfc = merged)
 }

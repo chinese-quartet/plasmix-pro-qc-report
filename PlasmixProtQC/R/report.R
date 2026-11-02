@@ -53,8 +53,6 @@ generate_protein_report <- function(qc_result,
 
   cor_detail <- qc_result$detail_results$cor_results
   n_cor <- cor_detail$N
-  reference_version <- cor_detail$ReferenceVersion
-  if (is.null(reference_version) || !nzchar(reference_version)) reference_version <- "未标注"
   if (!is.null(cor_detail$Pair) && cor_detail$Pair != "M/F") stop("The standard report requires M/F PCC.")
 
   # --- 3. 2026 年质量标准：四项均须严格大于阈值 ---
@@ -124,7 +122,7 @@ generate_protein_report <- function(qc_result,
   
   # --- 4. 构建表格数据 ---
   # 定义列名
-  cols <- c("样本组", "蛋白鉴定数", "标称特性召回率", "信噪比 (dB)", "M/F PCC", "是否通过")
+  cols <- c("样本组", "蛋白鉴定数", "标称特性召回率", "信噪比 (dB)", "Pearson相关系数", "是否通过")
 
   # 第一行：本报告采用的 2026 年质量标准
   row_std <- c("2026 年质量标准", ">1,000", ">0.90", ">5", ">0.80", "-")
@@ -159,13 +157,13 @@ generate_protein_report <- function(qc_result,
     color(i = 2, j = 6, color = ifelse(overall_quality == "Yes", "black", "red"))
 
   # --- 5. 文档文本内容 (来自提供的模板) ---
-  txt_summary <- "本报告基于多项组学关键质量控制指标，总结了 Plasmix血浆参考物质所生成数据的质量情况。质量控制流程从用户输入血浆蛋白组表达矩阵开始，分别计算蛋白检出数、标称特性召回率 (Recall)、信噪比 (SNR) 和固定M/F名单上的Pearson相关系数 (PCC，内部指标名为 RC)。按照本报告采用的 2026 年质量要求，仅当蛋白鉴定数 >1000、Recall >0.90、SNR >5 dB 且 PCC >0.80 时，整体判定为通过；任一项等于或低于阈值、缺失或非有限值均判定为不通过。判定采用未四舍五入的计算值，表格数值仅为格式化展示。"
+  txt_summary <- "本报告基于多项组学关键质量控制指标，总结了 Plasmix血浆参考物质所生成数据的质量情况。质量控制流程从用户输入血浆蛋白组表达矩阵开始，分别计算蛋白鉴定数、标称特性召回率 (Recall)、信噪比 (SNR) 和与参考数据集的 Pearson 相关系数 (PCC，内部指标名为 RC)。按照本报告采用的 2026 年质量要求，仅当蛋白鉴定数 >1000、Recall >0.90、SNR >5 dB 且 PCC >0.80 时，整体判定为通过；任一项等于或低于阈值、缺失或非有限值均判定为不通过。判定采用未四舍五入的计算值，表格数值仅为格式化展示。"
 
   txt_def_title <- "质量控制指标"
   txt_def_1 <- "蛋白鉴定数（Number of identified proteins）：按输入表达矩阵第一列唯一 Feature 的数量统计，沿用蛋白鉴定数名称。该计数口径不额外排除所有样本信号均缺失的 Feature；请在输入数据准备阶段完成相应的检测和鉴定筛选。"
-  txt_def_2 <- "标称特性召回率（Recall of nominal characteristics）：定义为固定定性核心蛋白在测试数据中检出的比例，逐测量计算后平均。DIA及SomaScan沿用提交值>0；Olink使用有限NPX值的报告覆盖，负NPX有效。无LOD的覆盖率不能解释为高于LOD。"
+  txt_def_2 <- "标称特性召回率（Recall of nominal characteristics）：定义为标称特性蛋白在测试数据集中被成功检测到的比例。"
   txt_def_3 <- "信噪比（Signal-to-Noise Ratio, SNR）：用于刻画某一检测平台、实验室或批次区分不同生物样本组之间内在生物学差异（“信号”）与同一样本组技术重复变异（“噪声”）的能力。SNR 越高，表明区分多组样本差异的能力越强。"
-  txt_def_4 <- "与参考数据集的 Pearson 相关系数（Pearson correlation coefficient, PCC）：将输入的 Log2 信号还原到线性空间，对M和F各组重复取算术均值，再计算M/F比值。只使用内置参考集预先固定的M/F报告名单与本次输入的有效交集，计算线性比值的Pearson相关系数。括号n为实际参与蛋白数，少于10个时不计算PCC；不逐批重选名单或按残差删蛋白。内部指标名沿用 RC。"
+  txt_def_4 <- "与参考数据集的 Pearson 相关系数（Pearson correlation coefficient, PCC）：将输入的 Log2 信号还原到线性空间，对每个样本组的技术重复取算术均值，再计算测试样本组相对于参考样本组的比值。与参考数据集按特征和样本对匹配后，汇总计算比值表达谱的 Pearson 相关系数，用于表征相对定量的一致性。内部指标名沿用 RC。"
 
   txt_refs <- c(
     "1. Zheng Y, et al. Multi-omics data integration using ratio-based quantitative profiling with Quartet reference materials. Nature Biotechnology, 2024.",
@@ -206,7 +204,6 @@ generate_protein_report <- function(qc_result,
   doc <- doc %>%
     body_add_par("摘要", style = "PlasmixHeading") %>%
     body_add_par(txt_summary, style = "PlasmixBody") %>%
-    body_add_par(paste0("参考数据集：", reference_version, "；报告比值：M/F。"), style = "PlasmixBody") %>%
     body_add_par("", style = "PlasmixBody")
 
   # 表格
@@ -248,7 +245,7 @@ generate_protein_report <- function(qc_result,
   doc <- doc %>% body_add_par("", style = "PlasmixBody")
 
   # Correlation
-  doc <- doc %>% body_add_break() %>% body_add_par("M/F Pearson Correlation Coefficient", style = "PlasmixHeading")
+  doc <- doc %>% body_add_break() %>% body_add_par("Pearson Correlation Coefficient", style = "PlasmixHeading")
   if (!is.null(qc_result$cor_plot)) {
     doc <- doc %>% body_add_gg(value = qc_result$cor_plot, style = "centered", width = 6, height = 5)
   } else {
