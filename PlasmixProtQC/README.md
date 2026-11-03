@@ -33,7 +33,7 @@ Word 报告的“是否通过”列要求以下四项**同时达标**：
 
 当前参考集为 **FDU_v2.0_20261101**，适用于FDU材料的DIA、Olink HT和SomaScan 11K。参考集版本与R包软件版本分别管理。
 
-继续使用两份主要内置RDA：`reference_dataset_quali.rda`用于Recall；`reference_dataset.rda`保留完整S/P和直接定值的MF，以及`UseForPCC`和`ReferenceVersion`。主报告依据参考集的UseForPCC标记纳入条目，DIA25、Olink134、SomaScan687个蛋白，不随提交批次重新筛选。PCC后括号n为实际有效交集。
+继续使用两份主要内置RDA：`reference_dataset_quali.rda`用于Recall；`reference_dataset.rda`保留完整S/P和直接定值的MF，以及`UseForPCC`和`ReferenceVersion`。主报告依据参考集的UseForPCC标记纳入条目，DIA25、Olink134、SomaScan687个蛋白，不随提交批次重新筛选。PCC散点图标题括号内的n为实际有效交集；报告表格仅显示PCC数值。
 
 两张图采用相同字体与主题。SNR散点缩小并增加细白边，保持样本组颜色；PCC散点单色显示PCC及实际n，横纵轴使用同一范围和等比例坐标。
 
