@@ -44,6 +44,17 @@ check_report <- function(values, expected, failed_column = NULL,
 }
 
 check_report(passing_values, "Yes")
+
+# Report tables keep numeric PCC only; n remains available in plot details.
+report_input <- list(qc_metrics_table = data.frame(Quality_Metrics = metric_names, Value = passing_values),
+  input_meta = data.frame(), snr_plot = NULL, cor_plot = NULL,
+  detail_results = list(cor_results = list(N = 22L, Pair = "M/F")))
+suppressMessages(generate_protein_report(report_input, report_dir = report_dir, report_name = "template.docx"))
+unzip(file.path(report_dir, "template.docx"), files = "word/document.xml", exdir = report_dir)
+report_xml <- xml2::read_xml(file.path(report_dir, "word/document.xml"))
+report_text <- paste(xml2::xml_text(xml2::xml_find_all(report_xml, ".//w:tbl//w:t", xml2::xml_ns(report_xml))), collapse = "")
+stopifnot(!grepl("n=", report_text, fixed = TRUE),
+  !grepl("PlasmixBody|PlasmixHeading", as.character(report_xml)))
 check_report(thresholds, "No", failed_column = 1L)
 for (i in seq_along(thresholds)) {
   values <- passing_values
